@@ -156,6 +156,7 @@ class Command(BaseCommand):
         countries = {}
 
         self.logger.info("Importing country data")
+        bulk = []
         for item in data:
             self.logger.info(item)
             if not self.call_hook('country_pre', item): continue
@@ -183,7 +184,8 @@ class Command(BaseCommand):
             countries[country.code] = country
             
             if not self.call_hook('country_post', country, item): continue 
-            country.save()
+            bulk.append(country)
+        Country.objects.bulk_create(bulk)
 
         for country, neighbour_codes in neighbours.items():
             neighbours = [x for x in [countries.get(x) for x in neighbour_codes if x] if x]
@@ -204,6 +206,7 @@ class Command(BaseCommand):
         self.build_country_index()
                 
         self.logger.info("Importing region data")
+        bulk = []
         for item in data:
             if not self.call_hook('region_pre', item): continue
             
@@ -223,8 +226,9 @@ class Command(BaseCommand):
                 continue
             
             if not self.call_hook('region_post', region, item): continue
-            region.save()
+            bulk.append(region)
             self.logger.debug("Added region: {0}, {1}".format(item['code'], region))
+        Region.objects.bulk_create(bulk)
         
     def build_region_index(self):
         if hasattr(self, 'region_index'): return
@@ -244,6 +248,7 @@ class Command(BaseCommand):
         self.build_region_index()
                 
         self.logger.info("Importing subregion data")
+        bulk = []
         for item in data:
             if not self.call_hook('subregion_pre', item): continue
             
@@ -263,8 +268,9 @@ class Command(BaseCommand):
                 continue
                 
             if not self.call_hook('subregion_post', subregion, item): continue
-            subregion.save()
+            bulk.append(subregion)
             self.logger.debug("Added subregion: {0}, {1}".format(item['code'], subregion))
+        Subregion.objects.bulk_create(bulk)
             
         del self.region_index
         
@@ -277,6 +283,7 @@ class Command(BaseCommand):
         self.build_region_index()
 
         self.logger.info("Importing city data")
+        bulk = []
         for item in data:
             if not self.call_hook('city_pre', item): continue
             
@@ -325,8 +332,9 @@ class Command(BaseCommand):
                 pass
             
             if not self.call_hook('city_post', city, item): continue
-            city.save()
+            bulk.append(city)
             self.logger.debug("Added city: {0}".format(city))
+        City.objects.bulk_create(bulk)
         
     def build_hierarchy(self):
         if hasattr(self, 'hierarchy'): return
@@ -357,6 +365,7 @@ class Command(BaseCommand):
             city_index[obj.id] = obj
             
         self.logger.info("Importing district data")
+        bulk = []
         for item in data:
             if not self.call_hook('district_pre', item): continue
             
@@ -401,8 +410,9 @@ class Command(BaseCommand):
             district.city = city
             
             if not self.call_hook('district_post', district, item): continue
-            district.save()
+            bulk.append(district)
             self.logger.debug("Added district: {0}".format(district))
+        District.objects.bulk_create(bulk)
         
     def import_alt_name(self):
         uptodate = self.download('alt_name')
@@ -419,6 +429,7 @@ class Command(BaseCommand):
                 }
         
         self.logger.info("Importing alternate name data")
+        bulk = []
         for item in data:
             if not self.call_hook('alt_name_pre', item): continue
             
@@ -442,10 +453,11 @@ class Command(BaseCommand):
             alt.language = locale
 
             if not self.call_hook('alt_name_post', alt, item): continue
-            alt.save()
+            bulk.append(alt)
             geo_info['object'].alt_names.add(alt)
 
             self.logger.debug("Added alt name: {0}, {1}".format(locale, alt))
+        AlternativeName.objects.bulk_create(bulk)
 
     def import_postal_code(self):
         uptodate = self.download('postal_code')
@@ -456,6 +468,7 @@ class Command(BaseCommand):
         self.build_region_index()
 
         self.logger.info("Importing postal codes")
+        bulk = []
         for item in data:
             if not self.call_hook('postal_code_pre', item): continue
 
@@ -487,10 +500,8 @@ class Command(BaseCommand):
 
             if not self.call_hook('postal_code_post', pc, item): continue
             self.logger.debug("Adding postal code: {0}, {1}".format(pc.country, pc))
-            try:
-                pc.save()
-            except Exception, e:
-                print e
+            bulk.append(pc)
+        PostalCode.objects.bulk_create(bulk)
 
     def flush_country(self):
         self.logger.info("Flushing country data")
